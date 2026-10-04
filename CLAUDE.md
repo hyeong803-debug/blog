@@ -30,6 +30,7 @@
 | `scripts/test_guard.js` | 발행 차단 가드 자가 테스트 (네이버 접속 없음) — `npm run test:guard` |
 | `scripts/test_draft_mock.js` | naver_draft.js 흐름 회귀 테스트 (가짜 에디터, 네이버 DOM 검증 아님) — `npm run test:mock` |
 | `scripts/naver_login.js` | 1회 로그인 (사용자가 직접, 비밀번호 저장 안 함) |
+| `블로그툴.command` | macOS 더블클릭 실행기 — 첫 실행 자동 설치·가드 테스트, 메뉴(글쓰기/임시저장/로그인/진단/테스트). bash 3.2 호환 유지 (macOS 기본 bash) |
 
 실행 환경: **사용자 PC = macOS**. 단축키는 `ControlOrMeta`(Mac=⌘) 사용. Node 18+.
 

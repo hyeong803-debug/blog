@@ -6,27 +6,28 @@
 사진 + 소재 + 한 줄 메모 → Claude Code가 사진을 직접 보고 글 작성 → **사용자 승인** → 네이버 **임시저장**까지.
 발행 버튼은 항상 사람이 누릅니다. (코드로도 차단: `installPublishGuard`)
 
-## 설치 (macOS, 1회)
+## 바로 실행하기 (macOS)
+1. **내려받기:** [ZIP 다운로드](https://github.com/hyeong803-debug/blog/archive/refs/heads/claude/naver-blog-auto-writer-mhljxt.zip) (GitHub 로그인 상태에서) → 다운로드 폴더에서 압축 풀기
+   - 원하는 곳(예: `문서` 폴더)으로 폴더째 옮겨 두세요.
+2. **실행:** 폴더 안의 **`블로그툴.command`** 를 더블클릭
+   - 처음에 "확인되지 않은 개발자" 경고가 뜨면 → 파일을 **우클릭(또는 control+클릭) → 열기 → 열기** (최초 1회만)
+   - 그래도 막히면: 시스템 설정 → 개인정보 보호 및 보안 → 아래쪽 "그래도 열기"
+3. 첫 실행은 자동으로 준비합니다: Node.js 확인(없으면 설치 안내) → 패키지·브라우저 설치 → 발행 차단 안전장치 자가 테스트
+4. 메뉴에서 번호 선택:
+   - `4` / `5` 네이버 로그인 (블로그별 처음 1회 — 열린 브라우저에서 **직접** 로그인)
+   - `1` 보험 글쓰기 / `2` 쿠팡 비교글 → Claude Code 가 열림 (처음이면 Claude 계정 로그인)
+   - `3` 만든 초안을 검수 → 연습 실행 → 확인 후 임시저장
+   - `6` 사진 폴더 열기 · `7` 네이버 화면 진단 · `8` 자가 테스트
+
+<details><summary>터미널로 직접 설치하는 방법 (개발자용)</summary>
+
 ```bash
-# 1) Node.js 18+ (없으면)
-brew install node
-
-# 2) 내려받기 — 이 브랜치를 내 Mac으로
 git clone -b claude/naver-blog-auto-writer-mhljxt https://github.com/hyeong803-debug/blog.git
-cd blog
-
-# 3) 패키지 + 브라우저
-npm install
-npx playwright install chromium
-
-# 4) 안전장치 자가 테스트 (둘 다 ✓ 여야 함)
-npm run test:guard
-npm run test:mock
-
-# 5) Claude Code 실행 후 로그인 + 셀렉터 실측
-claude
-> /setup-login
+cd blog && npm install && npx playwright install chromium
+npm run test:guard && npm run test:mock
+claude   # → /setup-login
 ```
+</details>
 
 ## 사용
 1. 사진을 `input/photos/`에 넣는다 (영상은 `input/videos/`). 아이폰 HEIC는 Claude가 `sips`로 JPG로 바꿔 줍니다.
