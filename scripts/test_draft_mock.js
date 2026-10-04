@@ -15,6 +15,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PHOTO_DIR = path.join(ROOT, 'input', 'photos', '_mocktest');
 const DRAFT = path.join(ROOT, 'drafts', '_mocktest.json');
 const PROFILE = path.join(ROOT, 'logs', '_mock-profile');
+const SHOP_DRAFT = path.join(ROOT, 'drafts', '_mockshop.json');
 
 const TOP = `<!doctype html><meta charset="utf-8"><body style="margin:0"><iframe id="mainFrame" name="mainFrame" src="/editor" style="width:1600px;height:1000px;border:0"></iframe>`;
 const EDITOR = `<!doctype html><meta charset="utf-8">
@@ -29,6 +30,8 @@ const EDITOR = `<!doctype html><meta charset="utf-8">
   <div id="sizeopts"><button class="se-toolbar-option-font-size-code-fs15">15</button><button class="se-toolbar-option-font-size-code-fs19">19</button></div>
   <button class="save_btn__a1b2">저장</button>
   <button class="publish_btn__c3d4">발행</button>
+  <button class="se-link-toolbar-button">링크</button>
+  <div id="linklayer" style="display:none"><input placeholder="URL을 입력하세요" id="linkurl"></div>
   <input type="file" id="file" style="display:none">
 </div>
 <div id="panel"><div class="tag_box"><span id="chips"></span><input id="tag-input"></div><button data-testid="seOnePublishBtn">발행</button></div>
@@ -59,6 +62,12 @@ document.querySelector('.save_btn__a1b2').onclick=()=>{window.saved++;};
 document.querySelector('.publish_btn__c3d4').onclick=()=>{document.getElementById('panel').style.display='block';};
 document.querySelector('[data-testid="seOnePublishBtn"]').onclick=()=>{window.published++;};
 document.getElementById('tag-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){const s=document.createElement('span');s.textContent='#'+e.target.value.trim()+' ';document.getElementById('chips').appendChild(s);e.target.value='';}});
+let savedRange=null;
+const lb=document.querySelector('.se-link-toolbar-button');
+lb.addEventListener('mousedown',e=>e.preventDefault());
+lb.onclick=()=>{const s=getSelection();savedRange=s.rangeCount?s.getRangeAt(0).cloneRange():null;document.getElementById('linklayer').style.display='block';};
+document.getElementById('linkurl').addEventListener('keydown',e=>{if(e.key==='Enter'&&savedRange){const a=document.createElement('a');a.href=e.target.value;a.appendChild(savedRange.extractContents());savedRange.insertNode(a);e.target.value='';document.getElementById('linklayer').style.display='none';e.preventDefault();}});
+document.addEventListener('paste',e=>{const u=(e.clipboardData&&e.clipboardData.getData('text/plain'))||'';if(/^https?:/.test(u)){e.preventDefault();const c=document.createElement('div');c.className='se-component se-oglink';c.innerHTML='<a class="se-oglink-info" href="'+u+'">쿠팡 상품 링크 카드</a>';wrap.appendChild(c);}},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('panel').style.display='none';});
 </script>`;
 
@@ -80,9 +89,9 @@ async function main() {
   await new Promise((r) => server.listen(0, r));
   const url = `http://127.0.0.1:${server.address().port}/write`;
 
-  const run = (extra) => new Promise((resolve) => {
+  const run = (draftFile, extra) => new Promise((resolve) => {
     const { spawn } = require('child_process');
-    const p = spawn(process.execPath, [path.join(__dirname, 'naver_draft.js'), path.relative(ROOT, DRAFT), ...extra], {
+    const p = spawn(process.execPath, [path.join(__dirname, 'naver_draft.js'), path.relative(ROOT, draftFile), ...extra], {
       cwd: ROOT, env: { ...process.env, NAVER_WRITE_URL: url, PW_HEADLESS: '1', PW_PROFILE_DIR: PROFILE },
     });
     let out = '';
@@ -91,24 +100,34 @@ async function main() {
     p.on('close', (code) => resolve({ code, out }));
   });
 
-  const dry = await run(['--dry-run']);
-  const real = await run([]);
+  const dry = await run(DRAFT, ['--dry-run']);
+  const real = await run(DRAFT, []);
+
+  // 쿠팡(shop) 초안: 카드 렌더 → 링크 카드·텍스트 링크 포함 실행
+  const shop = JSON.parse(fs.readFileSync(path.join(ROOT, 'drafts', 'example-shop.json'), 'utf8'));
+  fs.writeFileSync(SHOP_DRAFT, JSON.stringify(shop, null, 2));
+  const render = spawnSync(process.execPath, [path.join(__dirname, 'render_cards.js'), path.relative(ROOT, SHOP_DRAFT)], { cwd: ROOT, env: process.env, encoding: 'utf8' });
+  const shopRun = await run(SHOP_DRAFT, []);
   server.close();
 
   const ok = [];
-  ok.push(['dry-run 종료코드 0', dry.code === 0]);
-  ok.push(['dry-run 은 저장 생략 표시', /dry-run: 저장 생략/.test(dry.out)]);
-  ok.push(['실행 종료코드 0', real.code === 0]);
-  ok.push(['임시저장 + 전문 대조 통과', /임시저장 \+ 전문 대조 통과/.test(real.out)]);
-  ok.push(['발행 가드 활성 로그', /발행 차단 가드 활성/.test(real.out)]);
-  ok.push(['태그 7개 확인', /태그 7개 확인/.test(real.out)]);
+  ok.push(['[보험] dry-run 종료코드 0', dry.code === 0]);
+  ok.push(['[보험] dry-run 은 저장 생략 표시', /dry-run: 저장 생략/.test(dry.out)]);
+  ok.push(['[보험] 실행 종료코드 0', real.code === 0]);
+  ok.push(['[보험] 임시저장 + 전문 대조 통과', /임시저장 \+ 전문 대조 통과/.test(real.out)]);
+  ok.push(['[보험] 발행 가드 활성 로그', /발행 차단 가드 활성/.test(real.out)]);
+  ok.push(['[보험] 태그 7개 확인', /태그 7개 확인/.test(real.out)]);
   let postDump = '';
   try { postDump = fs.readFileSync(path.join(ROOT, 'drafts', '_mocktest.verify', 'post-dump.txt'), 'utf8'); } catch {}
-  ok.push(['이모지 뒤 텍스트 유실 없음', postDump.includes('끝납니다 🙂') && postDump.includes('함께 봐드립니다 📞')]);
+  ok.push(['[보험] 이모지 뒤 텍스트 유실 없음', postDump.includes('끝납니다 🙂') && postDump.includes('함께 봐드립니다 📞')]);
+  ok.push(['[쿠팡] 카드 렌더 성공', render.status === 0]);
+  ok.push(['[쿠팡] shop 세션으로 실행', /블로그: shop/.test(shopRun.out)]);
+  ok.push(['[쿠팡] 제휴 링크 3/3 (링크 카드 2 + 텍스트 링크 1)', /제휴 링크\s+3\/3/.test(shopRun.out)]);
+  ok.push(['[쿠팡] 임시저장 + 전문 대조 통과', shopRun.code === 0 && /임시저장 \+ 전문 대조 통과/.test(shopRun.out)]);
 
   let fail = 0;
   for (const [n, v] of ok) { console.log(`${v ? '✓' : '✗'} ${n}`); if (!v) fail++; }
-  if (fail || process.argv.includes('-v')) console.log('\n--- 실행 로그 ---\n' + real.out);
+  if (fail || process.argv.includes('-v')) console.log('\n--- 보험 실행 로그 ---\n' + real.out + '\n--- 쿠팡 렌더 ---\n' + render.stdout + render.stderr + '\n--- 쿠팡 실행 로그 ---\n' + shopRun.out);
 
   // 정리
   fs.rmSync(PHOTO_DIR, { recursive: true, force: true });
@@ -116,6 +135,8 @@ async function main() {
   fs.rmSync(path.join(ROOT, 'drafts', '_mocktest.manual.txt'), { force: true });
   if (!process.argv.includes('--keep-dump')) fs.rmSync(path.join(ROOT, 'drafts', '_mocktest.verify'), { recursive: true, force: true });
   fs.rmSync(PROFILE, { recursive: true, force: true });
+  for (const f of ['_mockshop.json', '_mockshop.manual.txt']) fs.rmSync(path.join(ROOT, 'drafts', f), { force: true });
+  for (const d of ['_mockshop.cards', '_mockshop.verify']) if (!process.argv.includes('--keep-dump') || d.endsWith('cards')) fs.rmSync(path.join(ROOT, 'drafts', d), { recursive: true, force: true });
   console.log(fail ? `\n✗ 모의 실행 테스트 실패 ${fail}건` : '\n✓ 모의 실행 테스트 통과 (실제 네이버 DOM 검증은 아님)');
   process.exit(fail ? 1 : 0);
 }

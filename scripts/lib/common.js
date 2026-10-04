@@ -6,7 +6,19 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const PROFILE_DIR = process.env.PW_PROFILE_DIR || path.join(ROOT, 'naver-profile');
+// 블로그별 로그인 세션 (블로그 1개 = 네이버 아이디 1개). insurance → naver-profile/, shop → naver-profile-shop/
+const BLOGS = ['insurance', 'shop'];
+function profileDir(blog = 'insurance') {
+  if (process.env.PW_PROFILE_DIR) return process.env.PW_PROFILE_DIR;
+  if (!BLOGS.includes(blog)) throw new Error(`알 수 없는 블로그: ${blog} (${BLOGS.join(' | ')})`);
+  return path.join(ROOT, blog === 'insurance' ? 'naver-profile' : `naver-profile-${blog}`);
+}
+/** CLI 인자 --blog <이름> */
+function blogArg(argv = process.argv) {
+  const i = argv.indexOf('--blog');
+  return i > -1 ? argv[i + 1] : 'insurance';
+}
+const PROFILE_DIR = profileDir('insurance');
 const LOG_DIR = path.join(ROOT, 'logs');
 const WRITE_URL = process.env.NAVER_WRITE_URL || 'https://blog.naver.com/GoBlogWrite.naver'; // env 는 오프라인 모의 테스트 전용
 const VIEWPORT = { width: 1680, height: 1050 }; // 1600x1000 이상 필수 (1400 이하 → 속성 툴바 잘림)
@@ -43,9 +55,9 @@ function makeLogger(name) {
  * 영구 프로필로 Chromium 실행 (세션 유지). 비밀번호는 저장/입력하지 않는다.
  * PW_CHROMIUM_PATH 환경변수가 있으면 해당 실행 파일 사용.
  */
-async function launchContext({ headless = process.env.PW_HEADLESS === '1' } = {}) {
+async function launchContext({ headless = process.env.PW_HEADLESS === '1', blog = 'insurance' } = {}) {
   const { chromium } = require('playwright');
-  ensureDir(PROFILE_DIR);
+  const dir = ensureDir(profileDir(blog));
   const opts = {
     headless,
     viewport: VIEWPORT,
@@ -53,7 +65,7 @@ async function launchContext({ headless = process.env.PW_HEADLESS === '1' } = {}
     args: [`--window-size=${VIEWPORT.width},${VIEWPORT.height + 120}`],
   };
   if (process.env.PW_CHROMIUM_PATH) opts.executablePath = process.env.PW_CHROMIUM_PATH;
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, opts);
+  const context = await chromium.launchPersistentContext(dir, opts);
   return context;
 }
 
@@ -177,6 +189,9 @@ async function hasDim(frame) {
 module.exports = {
   ROOT,
   PROFILE_DIR,
+  BLOGS,
+  profileDir,
+  blogArg,
   LOG_DIR,
   WRITE_URL,
   VIEWPORT,

@@ -43,6 +43,9 @@ const S = {
   saveBtn: 'button[class*="save_btn"]', // [실측] save_btn 뒤 해시
   publishOpenBtn: 'button[class*="publish_btn"]', // [추정] 우상단 "발행"(패널 열기) — 진짜 발행 버튼 아님
   tagInput: 'input#tag-input', // [실측]
+  linkBtn: 'button.se-link-toolbar-button, button[class*="se-link-toolbar"]', // [추정] 텍스트 링크 버튼
+  linkInput: 'input[placeholder*="URL"], input[placeholder*="url"], .se-custom-layer-link input, [class*="link"] input[type="text"]', // [추정]
+  oglink: '.se-component.se-oglink, .se-component[class*="oglink"]', // [추정] URL 붙여넣기 → 링크 카드
 };
 
 const argv = process.argv.slice(2);
@@ -52,6 +55,7 @@ const FORCE = argv.includes('--force-save');
 const draftArg = argv.find((a) => !a.startsWith('--'));
 
 const result = {
+  links: null,
   title: null, body: null, firstLine: null, images: null, captions: null, subtitles: null,
   quotes: null, dividers: null, video: null, place: null, tags: null, save: null, verify: null,
 };
@@ -234,6 +238,55 @@ async function writeImage(frame, page, block, log) {
     if (!captionOk) log(`  ⚠ 캡션 입력 확인 실패: ${block.path}`);
   }
   return { ok, caption: captionOk };
+}
+
+/** 제휴 링크. mode=card: URL 붙여넣기 → 링크 카드 / mode=text: 문구 입력 → 선택 → 링크 버튼 → URL */
+async function hasHref(frame, url) {
+  return frame.evaluate((u) => {
+    const n = (s) => String(s || '').replace(/\/+$/, '');
+    const comps = [...document.querySelectorAll('.se-component')];
+    return comps.some((c) => [...c.querySelectorAll('a[href]')].some((a) => n(a.href) === n(u) || n(a.getAttribute('href')) === n(u)) || (c.innerText || '').includes(u) || (c.outerHTML || '').includes(u));
+  }, url);
+}
+
+async function writeLink(frame, page, b, log) {
+  if (b.mode === 'text') {
+    await insertLine(page, b.text);
+    for (let i = 0; i < [...b.text].length; i++) await page.keyboard.press('Shift+ArrowLeft');
+    const btn = await visibleFirst(frame.locator(S.linkBtn));
+    if (!btn) { log('  ✗ 링크 툴바 버튼 없음 (probe 필요)'); await page.keyboard.press('End'); await enter(page); return false; }
+    await safeClick(btn);
+    await sleep(400);
+    const input = await visibleFirst(frame.locator(S.linkInput));
+    if (!input) { log('  ✗ 링크 URL 입력창 없음 (probe 필요)'); await page.keyboard.press('Escape'); await enter(page); return false; }
+    await input.click();
+    await page.keyboard.insertText(b.url);
+    await page.keyboard.press('Enter');
+    await sleep(400);
+    await caretToEnd(frame, page, log);
+    await enter(page);
+    return hasHref(frame, b.url);
+  }
+  // 링크 카드: 실제 클립보드 붙여넣기 → 실패 시 합성 paste 이벤트
+  const before = await frame.locator(S.oglink).count();
+  let pasted = false;
+  try {
+    await frame.evaluate((u) => navigator.clipboard.writeText(u), b.url);
+    await page.keyboard.press('ControlOrMeta+V');
+    pasted = true;
+  } catch {
+    pasted = await frame.evaluate((u) => {
+      const dt = new DataTransfer();
+      dt.setData('text/plain', u);
+      const target = document.activeElement || document.body;
+      return target.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    }, b.url);
+  }
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline && (await frame.locator(S.oglink).count()) <= before) await sleep(500);
+  const card = (await frame.locator(S.oglink).count()) > before;
+  if (!card) log('  ⚠ 링크 카드 생성 확인 안 됨 — URL 텍스트로만 들어갔는지 확인');
+  return pasted && (card || (await hasHref(frame, b.url)));
 }
 
 /** 팝업을 확실히 닫는다: 닫기 버튼 → 그래도 남으면 DOM 강제 제거 (dim 잔류 시 이후 클릭 전부 실패) */
@@ -447,6 +500,7 @@ async function dumpEditor(frame) {
       if (/se-quotation/.test(cls)) return 'quote';
       if (/se-horizontalLine/.test(cls)) return 'divider';
       if (/se-video/.test(cls)) return 'video';
+      if (/oglink/.test(cls)) return 'link';
       if (/se-placesMap|se-map|place/i.test(cls)) return 'place';
       if (/se-sectionTitle/.test(cls)) return 'subtitle';
       if (/\bse-text\b/.test(cls)) return 'text';
@@ -454,7 +508,8 @@ async function dumpEditor(frame) {
     };
     const title = (document.querySelector(titleSel)?.innerText || '').trim();
     const comps = [...document.querySelectorAll(compSel)].map((c) => ({ type: typeOf(c.className), cls: c.className, text: (c.innerText || '').trim() }));
-    return { title, comps: comps.filter((c) => c.type !== 'title') };
+    const links = [...document.querySelectorAll(compSel + ' a[href]')].map((a) => a.getAttribute('href'));
+    return { title, comps: comps.filter((c) => c.type !== 'title'), links };
   }, { compSel: S.component, titleSel: S.title });
 }
 
@@ -473,6 +528,8 @@ function compare(draft, dump) {
   const actualTypes = dump.comps.map((c) => c.type).filter((t) => t !== 'text' && t !== 'subtitle' && t !== 'other');
   let k = 0;
   for (const t of actualTypes) if (t === exp.types[k]) k++;
+  const linkHay = (dump.links || []).join('\n') + '\n' + dump.comps.map((c) => c.text).join('\n');
+  for (const u of exp.links) if (!linkHay.includes(u.replace(/\/+$/, ''))) issues.push(`제휴 링크 누락: ${u}`);
   if (k < exp.types.length) issues.push(`컴포넌트 순서/개수 불일치: 기대 [${exp.types.join(',')}] / 실제 [${actualTypes.join(',')}]`);
   return issues;
 }
@@ -506,6 +563,7 @@ function printReport(log) {
   log(`사진            ${result.images ? `${result.images.ok}/${result.images.total}` : '-'} ${result.images ? mark(result.images.ok === result.images.total) : ''}`);
   log(`사진 캡션        ${result.captions ? `${result.captions.ok}/${result.captions.total}` : '-'} ${result.captions ? mark(result.captions.ok === result.captions.total) : ''}`);
   log(`소제목 서식      ${result.subtitles ? `${result.subtitles.ok}/${result.subtitles.total}` : '-'} ${result.subtitles ? mark(result.subtitles.ok === result.subtitles.total) : ''}`);
+  log(`제휴 링크        ${result.links ? `${result.links.ok}/${result.links.total}` : '-'} ${result.links && result.links.total ? mark(result.links.ok === result.links.total) : ''}`);
   log(`인용구          ${result.quotes ? `${result.quotes.ok}/${result.quotes.total}` : '-'}`);
   log(`구분선          ${result.dividers ? `${result.dividers.ok}/${result.dividers.total}` : '-'}`);
   log(`동영상          ${mark(result.video)}`);
@@ -540,7 +598,10 @@ function printReport(log) {
   fs.writeFileSync(path.join(C.ROOT, 'drafts', `${draft.__name}.manual.txt`), D.manualManuscript(draft));
 
   log(`초안: ${draft.title}  (${DRY ? 'DRY-RUN: 저장 생략' : '임시저장'})`);
-  const context = await C.launchContext();
+  const BLOG = (draft.meta && draft.meta.blog) || C.blogArg();
+  log(`블로그: ${BLOG} (세션 ${path.relative(C.ROOT, C.profileDir(BLOG)) || C.profileDir(BLOG)})`);
+  const context = await C.launchContext({ blog: BLOG });
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   const page = context.pages()[0] || (await context.newPage());
   page.on('console', (m) => { if (m.text().includes('[PUBLISH-GUARD]')) log('🛡 ' + m.text()); });
   await C.installPublishGuard(context, page); // 첫 내비게이션 전: initScript 등록
@@ -559,7 +620,7 @@ function printReport(log) {
     // 본문 시작점: 본문 첫 문단 (셀렉터 범위 한정 — 제목 오염 방지)
     await safeClick(frame.locator(S.bodyP).first());
 
-    const cnt = { img: 0, imgOk: 0, cap: 0, capOk: 0, sub: 0, subOk: 0, q: 0, qOk: 0, d: 0, dOk: 0 };
+    const cnt = { lk: 0, lkOk: 0, img: 0, imgOk: 0, cap: 0, capOk: 0, sub: 0, subOk: 0, q: 0, qOk: 0, d: 0, dOk: 0 };
     for (let i = 0; i < plan.length; i++) {
       const b = plan[i];
       const next = plan[i + 1];
@@ -575,7 +636,12 @@ function printReport(log) {
         cnt.sub++;
         await caretToEnd(frame, page, log, true);
         if (await writeSubtitle(frame, page, b.text, log)) cnt.subOk++;
-      } else if (b.type === 'image') {
+      } else if (b.type === 'link') {
+        cnt.lk++;
+        await caretToEnd(frame, page, log, true);
+        if (await writeLink(frame, page, b, log).catch((e) => { log('  ✗ 링크: ' + e.message.split('\n')[0]); return false; })) cnt.lkOk++;
+        else manual.push(`제휴 링크 직접 삽입: ${b.mode === 'text' ? `"${b.text}" → ` : ''}${b.url}`);
+      } else if (b.type === 'image' || b.type === 'card') {
         cnt.img++;
         if (b.caption) cnt.cap++;
         await caretToEnd(frame, page, log);
@@ -604,6 +670,7 @@ function printReport(log) {
     }
     if (!draft.video) result.video = 'skip';
     if (!draft.place) result.place = 'skip';
+    result.links = { ok: cnt.lkOk, total: cnt.lk };
     result.images = { ok: cnt.imgOk, total: cnt.img };
     result.captions = { ok: cnt.capOk, total: cnt.cap };
     result.subtitles = { ok: cnt.subOk, total: cnt.sub };

@@ -1,0 +1,232 @@
+{
+  "title": "원룸 제습기 추천, 소음과 물통 크기로 고르면 끝",
+  "meta": {
+    "note": "형식 예시 — 제품 A/B/C·링크·후기 숫자는 가짜. 실제 글은 사용자가 붙여넣은 상품정보·후기로만.",
+    "blog": "shop",
+    "intent": "탐색",
+    "mainKeyword": "원룸 제습기 추천",
+    "subKeywords": [
+      "제습기 고르는 법",
+      "제습기 소음"
+    ],
+    "persona": "서울 원룸 자취 2년차 27세 직장인. 장마철 실내 빨래 냄새와 벽 곰팡이에 지침. 10만 원 안쪽, 잘 때 켜 둘 거라 소음에 예민.",
+    "hook": "공감형",
+    "authorityType": "리서치량형",
+    "products": [
+      "제품 A",
+      "제품 B",
+      "제품 C"
+    ],
+    "reviewsAnalyzed": 120,
+    "usedPersonally": [],
+    "priceCheckedAt": null
+  },
+  "blocks": [
+    {
+      "type": "text",
+      "text": "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+    },
+    {
+      "type": "text",
+      "text": "장마만 되면 원룸에 빨래 냄새가 꽉 차죠.\n창문 열면 비 들어오고, 닫으면 눅눅하고요.\n원룸 제습기 추천 글은 많은데 다 좋다고만 하니 고르기가 더 어렵습니다.\n결론부터 말씀드릴게요. 소음과 물통 크기, 이 두 개만 보면 됩니다 🙂"
+    },
+    {
+      "type": "text",
+      "text": "저는 이 제품들을 다 써 보진 않았습니다.\n대신 구매자 후기 120개를 끝까지 읽었고, 별 1~2개 후기부터 봤습니다."
+    },
+    {
+      "type": "card",
+      "template": "summary",
+      "data": {
+        "title": "원룸 제습기, 상황별로 이렇게",
+        "rows": [
+          {
+            "situation": "잘 때 켜 둘 거면",
+            "pick": "제품 A",
+            "why": "조용하다는 후기가 가장 많았어요"
+          },
+          {
+            "situation": "빨래 건조가 목적이면",
+            "pick": "제품 B",
+            "why": "물통이 커서 비우는 횟수가 적어요"
+          },
+          {
+            "situation": "고민되면",
+            "pick": "제품 C",
+            "why": "불만 후기 비율이 가장 낮았어요"
+          }
+        ],
+        "note": "구매자 후기 120개 요약 · 예시 데이터"
+      },
+      "caption": "원룸 제습기 추천 상황별 요약",
+      "path": "drafts/example-shop.cards/03-summary.png"
+    },
+    {
+      "type": "text",
+      "text": "✓ 잘 때 켜 둘 거면 - 제품 A\n✓ 빨래 건조가 목적이면 - 제품 B\n✓ 고민되면 - 제품 C"
+    },
+    {
+      "type": "subtitle",
+      "text": "제습기 고르는 법, 이 세 가지만 보세요"
+    },
+    {
+      "type": "card",
+      "template": "criteria",
+      "data": {
+        "title": "사기 전에 이것만 체크",
+        "items": [
+          {
+            "head": "소음",
+            "desc": "원룸은 침대와 거리가 가까워요"
+          },
+          {
+            "head": "물통 크기",
+            "desc": "작으면 하루 두 번 비워야 해요"
+          },
+          {
+            "head": "전기요금 표시",
+            "desc": "에너지효율 등급을 확인하세요"
+          }
+        ]
+      },
+      "path": "drafts/example-shop.cards/06-criteria.png"
+    },
+    {
+      "type": "text",
+      "text": "✓ 소음 - 원룸은 침대와 제습기 거리가 가깝습니다\n✓ 물통 크기 - 작으면 하루에 두 번 비워야 합니다\n✓ 에너지효율 - 장마 내내 켜 두면 차이가 납니다"
+    },
+    {
+      "type": "quote",
+      "text": "원룸에서는 제습량보다 소음이 먼저입니다."
+    },
+    {
+      "type": "card",
+      "template": "compare",
+      "data": {
+        "title": "세 제품 한눈에 비교",
+        "products": [
+          "제품 A",
+          "제품 B",
+          "제품 C"
+        ],
+        "highlight": 2,
+        "badge": "무난",
+        "rows": [
+          {
+            "label": "소음 불만",
+            "values": [
+              "적음",
+              "보통",
+              "적음"
+            ]
+          },
+          {
+            "label": "물통",
+            "values": [
+              "작음",
+              "큼",
+              "보통"
+            ]
+          },
+          {
+            "label": "주요 불만",
+            "values": [
+              "물통 비우기",
+              "소음",
+              "무게"
+            ]
+          }
+        ],
+        "note": "구매자 후기 기준 · 예시 데이터"
+      },
+      "caption": "원룸 제습기 비교표",
+      "path": "drafts/example-shop.cards/09-compare.png"
+    },
+    {
+      "type": "text",
+      "text": "표로 보면 차이가 분명합니다.\n제품 A는 조용하지만 물통이 작고, 제품 B는 반대입니다.\n제품 C는 어느 쪽도 크게 튀지 않는 무난한 선택입니다."
+    },
+    {
+      "type": "subtitle",
+      "text": "제품 A — 잘 때 켜 둘 분께"
+    },
+    {
+      "type": "text",
+      "text": "구매자 후기에서는 조용하다는 말이 가장 많았습니다.\n반대로 물통을 자주 비워야 한다는 불만이 꾸준히 보였습니다.\n잠귀가 밝다면 이 단점은 감수할 만합니다."
+    },
+    {
+      "type": "card",
+      "template": "proscons",
+      "data": {
+        "title": "제품 A 후기 요약",
+        "pros": [
+          "조용하다",
+          "디자인이 깔끔하다"
+        ],
+        "cons": [
+          "물통이 작다"
+        ],
+        "note": "예시 데이터"
+      },
+      "path": "drafts/example-shop.cards/13-proscons.png"
+    },
+    {
+      "type": "link",
+      "mode": "card",
+      "url": "https://link.coupang.com/a/EXAMPLE_A"
+    },
+    {
+      "type": "subtitle",
+      "text": "제품 B — 빨래 건조가 목적인 분께"
+    },
+    {
+      "type": "text",
+      "text": "물통이 커서 비우는 횟수가 적다는 후기가 많았습니다.\n다만 밤에는 소리가 신경 쓰인다는 후기도 있었습니다.\n낮에 빨래 말릴 때 주로 쓰신다면 잘 맞습니다."
+    },
+    {
+      "type": "link",
+      "mode": "text",
+      "text": "제품 B 가격·최신 후기 확인하기",
+      "url": "https://link.coupang.com/a/EXAMPLE_B"
+    },
+    {
+      "type": "subtitle",
+      "text": "제품 C — 고민되는 분께"
+    },
+    {
+      "type": "text",
+      "text": "불만 후기 비율이 셋 중 가장 낮았습니다.\n무게가 있어서 옮기기 불편하다는 말이 조금 있었습니다.\n한자리에 두고 쓰신다면 큰 문제는 아닙니다 💡"
+    },
+    {
+      "type": "link",
+      "mode": "card",
+      "url": "https://link.coupang.com/a/EXAMPLE_C"
+    },
+    {
+      "type": "subtitle",
+      "text": "이런 분은 사지 마세요"
+    },
+    {
+      "type": "text",
+      "text": "투룸 이상 넓은 집이라면 원룸용 용량은 부족할 수 있습니다.\n제습기 소음에 아주 예민하다면 매장에서 직접 들어 보시는 게 안전합니다."
+    },
+    {
+      "type": "quote",
+      "text": "고민되면 제품 C, 잘 때 켤 거면 제품 A입니다."
+    },
+    {
+      "type": "text",
+      "text": "원룸 제습기 추천, 결국 내 방에서 언제 켤지가 답입니다.\n이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+    }
+  ],
+  "tags": [
+    "원룸제습기추천",
+    "제습기고르는법",
+    "제습기소음",
+    "원룸제습기",
+    "장마필수템",
+    "자취템"
+  ],
+  "place": null,
+  "video": null
+}

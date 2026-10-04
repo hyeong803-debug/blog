@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 셀렉터 진단용 DOM 덤프 — 읽기 전용. 글 내용을 입력하거나 저장하지 않는다.
 // 사용:
-//   node scripts/probe_selectors.js                       # 에디터 기본 덤프
+//   node scripts/probe_selectors.js [--blog shop]         # 에디터 기본 덤프
 //   node scripts/probe_selectors.js --open ".se-map-toolbar-button"   # 팝업을 열어 그 DOM 까지 덤프(문서 내용은 바꾸지 않음)
 //   node scripts/probe_selectors.js --find "추가"          # 해당 텍스트를 가진 요소 위치/클래스 덤프
 // 결과: logs/probe-<시각>.json / .html
@@ -44,7 +44,7 @@ function arg(name) {
   ensureDir(LOG_DIR);
   const openSel = arg('--open');
   const findText = arg('--find');
-  const context = await launchContext();
+  const context = await launchContext({ blog: require('./lib/common').blogArg() });
   const page = context.pages()[0] || (await context.newPage());
   await installPublishGuard(context, page);
   await page.goto(WRITE_URL, { waitUntil: 'domcontentloaded' });

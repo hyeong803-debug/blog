@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 // 네이버 로그인 1회 — 사용자가 열린 브라우저에서 직접 로그인한다.
 // 이 스크립트는 아이디/비밀번호를 입력하거나 저장하지 않는다. 세션 쿠키만 naver-profile/ 에 남는다.
-// 사용: node scripts/naver_login.js
+// 사용: node scripts/naver_login.js [--blog insurance|shop]   (블로그마다 다른 네이버 아이디로 1회씩)
 'use strict';
 
-const { launchContext, WRITE_URL, isLoginUrl, sleep, makeLogger, installPublishGuard } = require('./lib/common');
+const { launchContext, WRITE_URL, isLoginUrl, sleep, makeLogger, installPublishGuard, blogArg, profileDir } = require('./lib/common');
+
+const BLOG = blogArg();
 
 (async () => {
-  const log = makeLogger('login');
-  const context = await launchContext();
+  const log = makeLogger(`login-${BLOG}`);
+  log(`블로그: ${BLOG} → 세션 폴더 ${profileDir(BLOG)}`);
+  const context = await launchContext({ blog: BLOG });
   const page = context.pages()[0] || (await context.newPage());
   await installPublishGuard(context, page);
 
@@ -39,7 +42,7 @@ const { launchContext, WRITE_URL, isLoginUrl, sleep, makeLogger, installPublishG
     await context.close();
     process.exit(1);
   }
-  log('✓ 로그인 세션 저장 완료 (naver-profile/). 이 폴더는 절대 외부에 공유하지 마세요.');
+  log(`✓ 로그인 세션 저장 완료 (${profileDir(BLOG)}). 이 폴더는 절대 외부에 공유하지 마세요.`);
   await context.close();
 })().catch((e) => {
   console.error(e);

@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT } = require('./common');
 
-const BLOCK_TYPES = ['text', 'subtitle', 'image', 'quote', 'divider'];
+// card = render_cards.js 로 HTML→PNG 렌더한 이미지 / link = 제휴 링크 (mode: card=링크 카드, text=텍스트 링크)
+const BLOCK_TYPES = ['text', 'subtitle', 'image', 'quote', 'divider', 'card', 'link'];
 
 // 비교용 정규화: 공백·제로폭·nbsp 제거
 const norm = (s) => String(s || '').replace(/[\s​‌‍﻿ ]/g, '');
@@ -31,8 +32,16 @@ function validateStructure(draft) {
       if (!b.path) err.push(`blocks[${i}] image.path 없음`);
       else if (!fs.existsSync(path.resolve(ROOT, b.path))) err.push(`blocks[${i}] 사진 파일 없음: ${b.path}`);
     }
+    if (b.type === 'card') {
+      if (!b.template) err.push(`blocks[${i}] card.template 없음`);
+      if (!b.path || !fs.existsSync(path.resolve(ROOT, b.path))) err.push(`blocks[${i}] 카드 미렌더 — 먼저 node scripts/render_cards.js ${'<초안>'} 실행`);
+    }
+    if (b.type === 'link') {
+      if (!/^https:\/\//.test(String(b.url || ''))) err.push(`blocks[${i}] link.url 이 https 주소가 아님`);
+      if (b.mode === 'text' && !String(b.text || '').trim()) err.push(`blocks[${i}] 텍스트 링크에 text 없음`);
+    }
   });
-  const imgs = (draft.blocks || []).filter((b) => b.type === 'image').map((b) => b.path);
+  const imgs = (draft.blocks || []).filter((b) => b.type === 'image' || b.type === 'card').map((b) => b.path).filter(Boolean);
   const dup = imgs.filter((p, i) => imgs.indexOf(p) !== i);
   if (dup.length) err.push(`사진 재사용 금지 — 중복: ${[...new Set(dup)].join(', ')}`);
   if (!(draft.blocks || []).some((b) => b.type === 'text')) err.push('text 블록이 최소 1개 필요');
@@ -79,19 +88,24 @@ function insertionPlan(draft) {
 function expectations(draft) {
   const texts = [];
   const types = [];
+  const links = [];
   for (const b of insertionPlan(draft)) {
     if (b.type === 'text') String(b.text).split('\n').forEach((l) => l.trim() && texts.push(l));
     if (b.type === 'subtitle' || b.type === 'quote') texts.push(b.text);
-    if (b.type === 'image') {
+    if (b.type === 'image' || b.type === 'card') {
       types.push('image');
       if (b.caption) texts.push(b.caption);
+    }
+    if (b.type === 'link') {
+      links.push(b.url);
+      if (b.mode === 'text') texts.push(b.text);
     }
     if (b.type === 'quote') types.push('quote');
     if (b.type === 'divider') types.push('divider');
     if (b.type === 'video') types.push('video');
     if (b.type === 'place') types.push('place');
   }
-  return { texts, types };
+  return { texts, types, links };
 }
 
 /** 사람이 그대로 붙여넣을 수 있는 수동 원고 */
@@ -104,6 +118,8 @@ function manualManuscript(draft) {
     if (b.type === 'quote') L.push(`[인용구] ${b.text}`, '');
     if (b.type === 'divider') L.push('[구분선]', '');
     if (b.type === 'image') L.push(`[사진] ${b.path}${b.caption ? `  / 캡션: ${b.caption}` : ''}`, '');
+    if (b.type === 'card') L.push(`[카드 이미지 · ${b.template}] ${b.path}${b.caption ? `  / 캡션: ${b.caption}` : ''}`, '');
+    if (b.type === 'link') L.push(b.mode === 'text' ? `[텍스트 링크] ${b.text} → ${b.url}` : `[링크 카드 — URL 붙여넣기] ${b.url}`, '');
     if (b.type === 'video') L.push(`[동영상] ${b.path}  / 제목: ${b.title}`, '');
     if (b.type === 'place') L.push(`[지도] 검색어: ${b.query}${b.name ? ` / 장소명: ${b.name}` : ''}`, '');
   }
